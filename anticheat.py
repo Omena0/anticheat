@@ -15,7 +15,8 @@ def anticheat():
     """Starts the anticheat process.
     """
     global ac_thread
-    ac_thread:Thread = Thread(target=ac).start()
+    ac_thread = Thread(target=ac)
+    ac_thread.start()
     
 
 def isAlive():
@@ -60,38 +61,37 @@ allowed_exes = {
     "searchapp.exe"
 }
 
+def terminate(proc:psutil.Process,filter,exe,command=False):
+    proc.terminate()
+    print(f'Found {proc.name()} [{filter}]')
+    messagebox.showinfo('Fr-client AntiCheat', f'Disallowed process detected!\
+        \n{'Command'if command else 'Executable'}: {exe}\
+        \nFilter: {filter}\
+        \n\nPlease report this if {proc.name()} should allowed!\nYour reputation will go down.')
 
 def ac():
     while True:
-        for i in psutil.process_iter():
+        for proc in psutil.process_iter():
             try:
-                if i.pid < 300: continue
-                if i.name().lower() in allowed_exes: continue
-                if i.name().lower() in allowlist: continue
-                print(f'Checking: {i.name()}')
-                for name in allowlist:
-                    if name in i.name().lower(): continue
-                for cmdline in allowlist:
-                    if cmdline in ' '.join(i.cmdline()).lower(): continue
-                
+                if proc.pid < 300: continue
+                proc_name_lower = proc.name().lower()
+                if proc_name_lower in allowed_exes: continue
+                if proc_name_lower in allowlist: continue
+                print(f'Checking: {proc.name()}')
+
+                # Precompute the command line string
+                cmdline_lower = ' '.join(proc.cmdline()).lower()
+
                 for name in banlist_name:
-                    if name in i.name().lower():
-                        i.terminate()
-                        print(f'Found {i.name()} [{name}]')
-                        messagebox.showinfo('Fr-client AntiCheat',f'Disallowed process detected!\
-                            \nProcess: {i.name()}\
-                            \nFilter: {name}\
-                            \n\nPlease report this if {i.name()} should not be disallowed!')
+                    if name in proc_name_lower:
+                        terminate(proc,name,proc_name_lower,False)
 
                 for cmdline in banlist_cmdline:
-                    if cmdline in ' '.join(i.cmdline()).lower():
-                        i.terminate()
-                        print(f'Found {i.name()} [{name}]')
-                        messagebox.showinfo('Fr-client AntiCheat',f'Disallowed process detected!\
-                            \nCommand: {' '.join(i.cmdline())}\
-                            \nFilter: {cmdline}\
-                            \n\nPlease report this if {i.name()} should not be disallowed!')
-            except: continue
+                    if cmdline in cmdline_lower:
+                        terminate(proc,cmdline,cmdline_lower,True)
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+            sleep(0.1)
         sleep(2)
 
 
@@ -113,4 +113,4 @@ if __name__ == '__main__':
 
 
 
-__all__ = [anticheat]
+__all__ = [anticheat,isAlive]
