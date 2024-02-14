@@ -8,7 +8,7 @@ from time import sleep
 
 banlist_name = {i.lower().strip() for i in apiGet('AntiCheat/banlist/name').split('\n') if i != '' and not i.startswith('#')}
 banlist_cmdline = {i.lower().strip() for i in apiGet('AntiCheat/banlist/cmdline').split('\n') if i != '' and not i.startswith('#')}
-allowlist = {i.lower().strip() for i in apiGet('AntiCheat/banlist/allowlist') if i != '' and not i.startswith('#')}
+allowlist = {i.lower().strip() for i in apiGet('AntiCheat/banlist/allowlist').split('\n') if i != '' and not i.startswith('#')}
 
 
 def anticheat():
@@ -52,7 +52,7 @@ allowed_exes = {
     "textinputhost.exe",
     "anticheat.py",
     "main.exe",
-    "anticheat.exe",
+    "anticheat",
     "python.exe",
     "powertoys.monacopreviewhandler.exe",
     "trustedinstaller.exe",
@@ -64,35 +64,37 @@ allowed_exes = {
 def terminate(proc:psutil.Process,filter,exe,command=False):
     proc.terminate()
     print(f'Found {proc.name()} [{filter}]')
+    Thread(target=msgbox,args=[command,exe,proc,filter]).start()
+    
+def msgbox(command,exe,proc,filter):
     messagebox.showinfo('Fr-client AntiCheat', f'Disallowed process detected!\
         \n{'Command'if command else 'Executable'}: {exe}\
         \nFilter: {filter}\
-        \n\nPlease report this if {proc.name()} should allowed!\nYour reputation will go down.')
+        \n\nPlease report this if {proc.name()} should allowed!')
+
 
 def ac():
     while True:
         for proc in psutil.process_iter():
             try:
                 if proc.pid < 300: continue
-                proc_name_lower = proc.name().lower()
-                if proc_name_lower in allowed_exes: continue
-                if proc_name_lower in allowlist: continue
+                name_lower = proc.name().lower()
+                cmdline_lower = ' '.join(proc.cmdline()).lower()
+                if name_lower in allowed_exes: continue
+                if any(i for i in allowlist if i in cmdline_lower): continue
                 print(f'Checking: {proc.name()}')
 
-                # Precompute the command line string
-                cmdline_lower = ' '.join(proc.cmdline()).lower()
-
                 for name in banlist_name:
-                    if name in proc_name_lower:
-                        terminate(proc,name,proc_name_lower,False)
+                    if name in name_lower:
+                        terminate(proc,name,name_lower,False)
 
                 for cmdline in banlist_cmdline:
                     if cmdline in cmdline_lower:
                         terminate(proc,cmdline,cmdline_lower,True)
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 continue
-            sleep(0.1)
-        sleep(2)
+            #sleep(0.1)
+        #sleep(2)
 
 
 

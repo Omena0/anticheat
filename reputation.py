@@ -4,27 +4,24 @@ import time as t
 
 
 
-
 class User:
     def __init__(self,name:str):
         self.name:str = name
-        self.rep:int = 0                           # 0 = neutral
+        self.rep:int = 0                           # Positive = good, negative = bad, 0 = Neutral/unknown
         self.assoc:set[AssocType] = set()          # Set of AssocType
         self.desc = '--- No Description ---'       # Editable(?) description.
         self.evidence:set[EvidenceType] = set()    # Set of EvidenceType
         self.flags:set = set()                     # Set of FlagType
         self.createdOn = t.time()                  # Account's created time
     
-    def calcRep(self):
+    def calcRep(self,called_from=None):
         rep = 0
 
-        # Associatio calculation (avg)
+        # Association calculation
         if self.assoc:
-            tot = 0
-            for assoc in self.assoc:
-                tot += assoc.rep * (assoc.ammount/2)
-            tot /= (len(self.assoc)/2)
-            rep += tot
+            for i in self.assoc:
+                if called_from == i.user: continue
+                rep += round(i.user.calcRep(called_from=self) * i.ammount,4)/10
 
         # Evidence calc
         if self.evidence:
@@ -38,10 +35,14 @@ class User:
 
         rep = max(rep, -1)
         rep = min(rep, 1)
-
+        rep = round(rep,4)
+        
         self.rep = rep
         return rep
-        
+
+
+users:list[User] = []
+
 
 class FlagType:
     def __init__(self,type:str,confidence:int=1):
@@ -82,21 +83,12 @@ class AssocType:
 
 
 
-a = User('Omena0')
-b = User('Bank Robber')
 
-b.evidence.add(EvidenceType('Sussy baki',1,True))
-b.evidence.add(EvidenceType('Sussy baki x2',1,True))
-b.flags.add(FlagType('ClientAC',1))
-b.flags.add(FlagType('ClientAC',1))
-b.flags.add(FlagType('ClientAC',1))
-b.flags.add(FlagType('ClientAC',1))
-b.calcRep()
 
-a.assoc.add(AssocType(b,0.4))
 
-print(a.calcRep())
-print(b.calcRep())
+
+
+
 
 
 
